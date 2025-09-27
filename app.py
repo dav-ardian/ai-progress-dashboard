@@ -19,7 +19,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", sco
 client = gspread.authorize(creds)
 
 # Buka Google Sheet
-spreadsheet = client.open("NAMA_GOOGLE_SHEET_KAMU")
+spreadsheet = client.open("Book2")
 sheet = spreadsheet.worksheet("Sitelist IHR Survey - JABO")
 
 # Ambil data ke DataFrame
