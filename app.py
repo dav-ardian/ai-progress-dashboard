@@ -5,7 +5,27 @@ from streamlit_folium import st_folium
 import plotly.express as px
 
 # Load data (contoh: dari Excel lokal, nanti bisa diganti Google Sheets)
-df = pd.read_excel("Book2.xlsx", sheet_name="Sitelist IHR Survey - JABO")
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+# Konfigurasi scope
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
+# Load credentials.json
+creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+client = gspread.authorize(creds)
+
+# Buka Google Sheet
+spreadsheet = client.open("NAMA_GOOGLE_SHEET_KAMU")
+sheet = spreadsheet.worksheet("Sitelist IHR Survey - JABO")
+
+# Ambil data ke DataFrame
+data = sheet.get_all_records()
+df = pd.DataFrame(data)
+
 
 # Pastikan kolom koordinat ada
 if "LAT" in df.columns and "LONG" in df.columns:
