@@ -4,3 +4,6 @@ pandas
 openpyxl
 plotly
 folium
+gspread
+oauth2client
+pandas
