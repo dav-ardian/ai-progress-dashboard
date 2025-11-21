@@ -1,0 +1,1200 @@
+<!doctype html>
+<html lang="id">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Absensi Sekolah</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow-y: auto;
+    }
+    
+    html {
+      height: 100%;
+    }
+    
+    .modal-backdrop {
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+    
+    .loading-spinner {
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3b82f6;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    
+    .table-container {
+      overflow-x: auto;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    
+    .sticky-header th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+ </head>
+ <body>
+  <div id="app" class="min-h-full"><!-- Header -->
+   <header id="header" class="shadow-lg p-8">
+    <div class="max-w-7xl mx-auto">
+     <div class="flex justify-between items-center">
+      <div class="flex items-center gap-4">
+       <div id="school-logo" class="flex-shrink-0">
+        <svg width="80" height="80" viewbox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="50" cy="50" r="48" fill="#ffffff" stroke="#0ea5e9" stroke-width="3" /> <path d="M50 20 L70 40 L70 75 L30 75 L30 40 Z" fill="#0ea5e9" /> <rect x="45" y="55" width="10" height="20" fill="#ffffff" /> <rect x="35" y="45" width="8" height="8" fill="#ffffff" /> <rect x="57" y="45" width="8" height="8" fill="#ffffff" /> <path d="M25 40 L50 20 L75 40" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" /> <circle cx="50" cy="15" r="5" fill="#fbbf24" /> <path d="M40 85 L60 85" stroke="#0ea5e9" stroke-width="2" stroke-linecap="round" />
+        </svg>
+       </div>
+       <div>
+        <h1 id="school-title" class="text-4xl font-bold mb-1"></h1>
+        <p class="text-sm opacity-90">Sistem Utilisasi Team</p>
+       </div>
+      </div>
+      <div class="text-right">
+       <p id="current-day" class="text-sm font-medium mb-1"></p>
+       <p id="current-date" class="text-sm mb-2"></p>
+       <p id="current-time" class="text-2xl font-bold"></p>
+      </div>
+     </div>
+    </div>
+   </header><!-- Navigation -->
+   <nav id="navigation" class="shadow-sm">
+    <div class="max-w-7xl mx-auto px-6 py-4">
+     <div class="flex gap-4"><button onclick="showPage('absensi')" class="nav-btn px-6 py-2 rounded-lg font-medium transition-colors"> 📝 Absensi Karyawan </button> <button onclick="showPage('rekap')" class="nav-btn px-6 py-2 rounded-lg font-medium transition-colors"> 📊 Rekap Absensi </button> <button onclick="showPage('siswa')" class="nav-btn px-6 py-2 rounded-lg font-medium transition-colors"> 👥 Data Karyawan </button>
+     </div>
+    </div>
+   </nav><!-- Main Content -->
+   <main class="max-w-7xl mx-auto p-6"><!-- Page: Absensi Siswa -->
+    <div id="page-absensi" class="page-content">
+     <div class="rounded-lg shadow-lg p-6 mb-6">
+      <div class="flex justify-between items-center mb-4">
+       <h2 class="text-2xl font-bold">Absensi Siswa</h2>
+       <div id="absensi-loading-indicator" class="hidden"><span class="text-sm text-gray-500">��� Memperbarui data...</span>
+       </div>
+      </div>
+      <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+       <div><label class="block text-sm font-medium mb-2">Pilih Project:</label> <select id="class-select" class="w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2"> <option value="">-- Pilih Project --</option> <option value="IHR">IHR</option> <option value="MZ">MZ</option> <option value="NW">NW</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium mb-2">Tanggal Absensi:</label> <input type="date" id="attendance-date" class="w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2">
+       </div>
+      </div>
+      <div id="student-list" class="hidden">
+       <div class="mb-4 flex justify-between items-center">
+        <h3 id="selected-class-title" class="text-xl font-semibold"></h3><span id="student-count" class="text-sm"></span>
+       </div>
+       <div class="table-container rounded-lg border-2">
+        <table class="w-full">
+         <thead class="sticky-header">
+          <tr id="table-header">
+           <th class="px-4 py-3 text-left text-sm font-semibold">No</th>
+           <th class="px-4 py-3 text-left text-sm font-semibold">NIS</th>
+           <th class="px-4 py-3 text-left text-sm font-semibold">Nama Lengkap</th>
+           <th class="px-4 py-3 text-left text-sm font-semibold">Jenis Kelamin</th>
+           <th class="px-4 py-3 text-left text-sm font-semibold">Project</th>
+           <th class="px-4 py-3 text-center text-sm font-semibold">Keterangan</th>
+          </tr>
+         </thead>
+         <tbody id="student-table-body">
+         </tbody>
+        </table>
+       </div>
+       <div class="mt-6 flex justify-end"><button id="submit-btn" onclick="submitAttendance()" class="px-8 py-3 rounded-lg font-semibold text-white transition-colors shadow-lg"> 📤 Kirim Absensi </button>
+       </div>
+      </div>
+     </div>
+    </div><!-- Page: Rekap Absensi -->
+    <div id="page-rekap" class="page-content hidden"><!-- Statistik Cards -->
+     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div class="rounded-lg shadow-lg p-6" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-white text-sm font-medium mb-1">Total Hadir</p>
+         <p id="stat-hadir" class="text-white text-3xl font-bold">0</p>
+        </div>
+        <div class="text-white text-4xl">
+         ���
+        </div>
+       </div>
+      </div>
+      <div class="rounded-lg shadow-lg p-6" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-white text-sm font-medium mb-1">Total Izin</p>
+         <p id="stat-izin" class="text-white text-3xl font-bold">0</p>
+        </div>
+        <div class="text-white text-4xl">
+         📋
+        </div>
+       </div>
+      </div>
+      <div class="rounded-lg shadow-lg p-6" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-white text-sm font-medium mb-1">Total Sakit</p>
+         <p id="stat-sakit" class="text-white text-3xl font-bold">0</p>
+        </div>
+        <div class="text-white text-4xl">
+         🤒
+        </div>
+       </div>
+      </div>
+      <div class="rounded-lg shadow-lg p-6" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);">
+       <div class="flex items-center justify-between">
+        <div>
+         <p class="text-white text-sm font-medium mb-1">Total Alpha</p>
+         <p id="stat-alpha" class="text-white text-3xl font-bold">0</p>
+        </div>
+        <div class="text-white text-4xl">
+         ❌
+        </div>
+       </div>
+      </div>
+     </div><!-- Chart Statistik -->
+     <div class="rounded-lg shadow-lg p-6 mb-6">
+      <h3 class="text-xl font-bold mb-4">Statistik Kehadiran</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6"><!-- Bar Chart -->
+       <div>
+        <p class="text-sm font-medium mb-4 text-center">Perbandingan Status Kehadiran</p>
+        <div class="space-y-3">
+         <div>
+          <div class="flex justify-between mb-1"><span class="text-sm font-medium">✅ Hadir</span> <span id="bar-hadir-text" class="text-sm font-medium">0 (0%)</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-6">
+           <div id="bar-hadir" class="bg-green-500 h-6 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+         </div>
+         <div>
+          <div class="flex justify-between mb-1"><span class="text-sm font-medium">📋 Izin</span> <span id="bar-izin-text" class="text-sm font-medium">0 (0%)</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-6">
+           <div id="bar-izin" class="bg-blue-500 h-6 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+         </div>
+         <div>
+          <div class="flex justify-between mb-1"><span class="text-sm font-medium">🤒 Sakit</span> <span id="bar-sakit-text" class="text-sm font-medium">0 (0%)</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-6">
+           <div id="bar-sakit" class="bg-yellow-500 h-6 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+         </div>
+         <div>
+          <div class="flex justify-between mb-1"><span class="text-sm font-medium">❌ Alpha</span> <span id="bar-alpha-text" class="text-sm font-medium">0 (0%)</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-6">
+           <div id="bar-alpha" class="bg-red-500 h-6 rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+         </div>
+        </div>
+       </div><!-- Summary Stats -->
+       <div>
+        <p class="text-sm font-medium mb-4 text-center">Ringkasan Data</p>
+        <div class="space-y-4">
+         <div class="border-2 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">Total Keseluruhan</p>
+          <p id="total-records" class="text-2xl font-bold">0 Records</p>
+         </div>
+         <div class="border-2 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">Persentase Kehadiran</p>
+          <p id="percentage-hadir" class="text-2xl font-bold text-green-600">0%</p>
+         </div>
+         <div class="border-2 rounded-lg p-4">
+          <p class="text-sm text-gray-600 mb-1">Persentase Ketidakhadiran</p>
+          <p id="percentage-tidak-hadir" class="text-2xl font-bold text-red-600">0%</p>
+         </div>
+        </div>
+       </div>
+      </div>
+     </div><!-- Filter dan Tabel -->
+     <div class="rounded-lg shadow-lg p-6">
+      <div class="flex justify-between items-center mb-4">
+       <h2 class="text-2xl font-bold">Data Rekap Absensi</h2>
+       <div id="loading-indicator" class="hidden"><span class="text-sm text-gray-500">🔄 Memperbarui data...</span>
+       </div>
+      </div>
+      <div class="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+       <div><label class="block text-sm font-medium mb-2">Filter Project:</label> <select id="rekap-class-filter" onchange="loadRekapClassStudents()" class="w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2"> <option value="">Semua Project</option> <option value="IHR">IHR</option> <option value="MZ">MZ</option> <option value="NW">NW</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium mb-2">Filter Karyawan:</label> <select id="rekap-student-filter" onchange="filterRekap()" class="w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2"> <option value="">Semua Karyawan</option> </select>
+       </div>
+       <div><label class="block text-sm font-medium mb-2">Tanggal Dari:</label> <input type="date" id="rekap-date-from" onchange="filterRekap()" class="w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2">
+       </div>
+       <div><label class="block text-sm font-medium mb-2">Tanggal Sampai:</label> <input type="date" id="rekap-date-to" onchange="filterRekap()" class="w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2">
+       </div>
+       <div><label class="block text-sm font-medium mb-2">Filter Keterangan:</label> <select id="rekap-status-filter" onchange="filterRekap()" class="w-full px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2"> <option value="">Semua Status</option> <option value="Hadir">✅ Hadir</option> <option value="Izin">📋 Izin</option> <option value="Sakit">🤒 Sakit</option> <option value="Alpha">❌ Alpha</option> </select>
+       </div>
+      </div>
+      <div class="table-container rounded-lg border-2">
+       <table class="w-full">
+        <thead class="sticky-header">
+         <tr id="rekap-table-header">
+          <th class="px-4 py-3 text-left text-sm font-semibold">No</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">Tanggal</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">NIS</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">Nama</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">Project</th>
+          <th class="px-4 py-3 text-center text-sm font-semibold">Keterangan</th>
+         </tr>
+        </thead>
+        <tbody id="rekap-table-body">
+        </tbody>
+       </table>
+      </div>
+      <div id="rekap-empty" class="text-center py-8 hidden">
+       <p class="text-lg">Tidak ada data rekap absensi</p>
+      </div>
+     </div>
+    </div><!-- Page: Data Siswa -->
+    <div id="page-siswa" class="page-content hidden">
+     <div class="rounded-lg shadow-lg p-6">
+      <div class="flex justify-between items-center mb-4">
+       <h2 class="text-2xl font-bold">Data Karyawan</h2>
+       <div id="siswa-loading-indicator" class="hidden"><span class="text-sm text-gray-500">🔄 Memperbarui data...</span>
+       </div>
+      </div>
+      <div class="mb-6"><label class="block text-sm font-medium mb-2">Filter Project:</label> <select id="siswa-class-filter" onchange="filterSiswa()" class="w-full md:w-64 px-4 py-2 border-2 rounded-lg focus:outline-none focus:ring-2"> <option value="">Semua Project</option> <option value="IHR">IHR</option> <option value="MZ">MZ</option> <option value="NW">NW</option> </select>
+      </div>
+      <div class="table-container rounded-lg border-2">
+       <table class="w-full">
+        <thead class="sticky-header">
+         <tr id="siswa-table-header">
+          <th class="px-4 py-3 text-left text-sm font-semibold">No</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">NIS</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">Nama Lengkap</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">Jenis Kelamin</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">Project</th>
+         </tr>
+        </thead>
+        <tbody id="siswa-table-body">
+        </tbody>
+       </table>
+      </div>
+     </div>
+    </div>
+   </main><!-- Modal Loading -->
+   <div id="loading-modal" class="fixed inset-0 modal-backdrop items-center justify-center z-50 hidden">
+    <div class="rounded-lg shadow-2xl p-8 max-w-md w-full mx-4 text-center">
+     <div class="loading-spinner mx-auto mb-4"></div>
+     <h3 class="text-xl font-bold mb-2">Mengirim Data Absensi</h3>
+     <p class="mb-4">Mohon tunggu, sedang mengirim data...</p>
+     <div id="progress-info" class="text-sm"></div>
+    </div>
+   </div><!-- Modal Success -->
+   <div id="success-modal" class="fixed inset-0 modal-backdrop items-center justify-center z-50 hidden">
+    <div class="rounded-lg shadow-2xl p-8 max-w-md w-full mx-4 text-center">
+     <div class="text-6xl mb-4">
+      ✅
+     </div>
+     <h3 class="text-xl font-bold mb-2">Berhasil!</h3>
+     <p id="success-message" class="mb-6"></p><button onclick="closeSuccessModal()" class="px-6 py-2 rounded-lg font-semibold text-white transition-colors"> Tutup </button>
+    </div>
+   </div><!-- Modal Error -->
+   <div id="error-modal" class="fixed inset-0 modal-backdrop items-center justify-center z-50 hidden">
+    <div class="rounded-lg shadow-2xl p-8 max-w-md w-full mx-4 text-center">
+     <div class="text-6xl mb-4">
+      ❌
+     </div>
+     <h3 class="text-xl font-bold mb-2">Gagal</h3>
+     <p id="error-message" class="mb-6"></p><button onclick="closeErrorModal()" class="px-6 py-2 rounded-lg font-semibold text-white transition-colors"> Tutup </button>
+    </div>
+   </div>
+  </div>
+  <script>
+    const defaultConfig = {
+      school_name: "Cakra Mandala Adhikarya",
+      background_color: "#f0f9ff",
+      header_color: "#0ea5e9",
+      nav_color: "#ffffff",
+      text_color: "#1e293b",
+      button_color: "#0284c7",
+      font_family: "system-ui",
+      font_size: 16
+    };
+
+    let studentsData = [];
+    let rekapData = [];
+    let currentPage = 'absensi';
+
+    const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS5H7uarcRnpGuh7Lgz3_H4cTTEUjLHk37Bi5zLX0MGajnNg5GL-jQBEgTjIqxC_9xKdbMoIKmezXF3/pub?gid=0&single=true&output=csv';
+    const REKAP_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS5H7uarcRnpGuh7Lgz3_H4cTTEUjLHk37Bi5zLX0MGajnNg5GL-jQBEgTjIqxC_9xKdbMoIKmezXF3/pub?gid=1261856262&single=true&output=csv';
+    const SUBMIT_URL = 'https://script.google.com/macros/s/AKfycbwsw0aW1CQyvwmlEsuKYZoNL2oQNL0v7zHGXmLX0jnWiAU3RDgr1woKaf-OYGQ48HxT/exec';
+    
+    let allStudentsForFilter = [];
+    let siswaAutoRefreshInterval = null;
+    let absensiAutoRefreshInterval = null;
+
+    async function onConfigChange(config) {
+      const schoolName = config.school_name || defaultConfig.school_name;
+      const backgroundColor = config.background_color || defaultConfig.background_color;
+      const headerColor = config.header_color || defaultConfig.header_color;
+      const navColor = config.nav_color || defaultConfig.nav_color;
+      const textColor = config.text_color || defaultConfig.text_color;
+      const buttonColor = config.button_color || defaultConfig.button_color;
+      const fontFamily = config.font_family || defaultConfig.font_family;
+      const fontSize = config.font_size || defaultConfig.font_size;
+
+      document.body.style.backgroundColor = backgroundColor;
+      document.body.style.color = textColor;
+      document.body.style.fontFamily = `${fontFamily}, system-ui, sans-serif`;
+      document.body.style.fontSize = `${fontSize}px`;
+
+      const header = document.getElementById('header');
+      header.style.backgroundColor = headerColor;
+      header.style.color = '#ffffff';
+
+      const navigation = document.getElementById('navigation');
+      navigation.style.backgroundColor = navColor;
+
+      document.getElementById('school-title').textContent = schoolName;
+      document.getElementById('school-title').style.fontSize = `${fontSize * 2.5}px`;
+
+      const navButtons = document.querySelectorAll('.nav-btn');
+      navButtons.forEach(btn => {
+        btn.style.color = textColor;
+        btn.style.fontSize = `${fontSize}px`;
+      });
+
+      const contentDivs = document.querySelectorAll('.rounded-lg.shadow-lg');
+      contentDivs.forEach(div => {
+        div.style.backgroundColor = '#ffffff';
+      });
+
+      const buttons = document.querySelectorAll('button:not(.nav-btn)');
+      buttons.forEach(btn => {
+        if (!btn.classList.contains('nav-btn')) {
+          btn.style.backgroundColor = buttonColor;
+          btn.style.fontSize = `${fontSize}px`;
+        }
+      });
+
+      const tableHeaders = document.querySelectorAll('th');
+      tableHeaders.forEach(th => {
+        th.style.backgroundColor = headerColor;
+        th.style.color = '#ffffff';
+        th.style.fontSize = `${fontSize * 0.875}px`;
+      });
+
+      const selects = document.querySelectorAll('select');
+      selects.forEach(select => {
+        select.style.borderColor = buttonColor;
+        select.style.fontSize = `${fontSize}px`;
+      });
+
+      const inputs = document.querySelectorAll('input');
+      inputs.forEach(input => {
+        input.style.borderColor = buttonColor;
+        input.style.fontSize = `${fontSize}px`;
+      });
+
+      const modals = document.querySelectorAll('.rounded-lg.shadow-2xl');
+      modals.forEach(modal => {
+        modal.style.backgroundColor = '#ffffff';
+      });
+    }
+
+    function updateDateTime() {
+      const now = new Date();
+      
+      const dayOptions = { 
+        weekday: 'long',
+        timeZone: 'Asia/Jakarta'
+      };
+      const dayStr = now.toLocaleDateString('id-ID', dayOptions);
+      
+      const dateOptions = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        timeZone: 'Asia/Jakarta'
+      };
+      const dateStr = now.toLocaleDateString('id-ID', dateOptions);
+      
+      const timeStr = now.toLocaleTimeString('id-ID', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'Asia/Jakarta',
+        hour12: false
+      });
+      
+      document.getElementById('current-day').textContent = dayStr;
+      document.getElementById('current-day').style.fontSize = `${fontSize * 1.25}px`;
+      document.getElementById('current-date').textContent = dateStr;
+      document.getElementById('current-date').style.fontSize = `${fontSize * 1.125}px`;
+      document.getElementById('current-time').textContent = timeStr;
+      document.getElementById('current-time').style.fontSize = `${fontSize * 2.5}px`;
+    }
+
+    async function loadStudentData(showIndicator = false) {
+      try {
+        if (showIndicator) {
+          const siswaIndicator = document.getElementById('siswa-loading-indicator');
+          const absensiIndicator = document.getElementById('absensi-loading-indicator');
+          if (siswaIndicator && currentPage === 'siswa') {
+            siswaIndicator.classList.remove('hidden');
+          }
+          if (absensiIndicator && currentPage === 'absensi') {
+            absensiIndicator.classList.remove('hidden');
+          }
+        }
+        
+        const response = await fetch(SHEET_URL + '&cachebust=' + new Date().getTime());
+        const csvText = await response.text();
+        
+        const lines = csvText.split('\n').filter(line => line.trim());
+        
+        studentsData = [];
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          const values = parseCSVLine(line);
+          
+          if (values.length >= 4 && values[0]) {
+            studentsData.push({
+              nis: values[0].trim(),
+              nama: values[1].trim(),
+              jenisKelamin: values[2].trim(),
+              kelas: values[3].trim(),
+              attendance: null
+            });
+          }
+        }
+        
+        allStudentsForFilter = [...studentsData];
+        
+        updateSiswaTable();
+        
+        const selectedClass = document.getElementById('class-select').value;
+        if (selectedClass) {
+          const filteredStudents = studentsData.filter(s => s.kelas === selectedClass);
+          const tbody = document.getElementById('student-table-body');
+          tbody.innerHTML = '';
+          
+          if (filteredStudents.length > 0) {
+            document.getElementById('student-count').textContent = `Total: ${filteredStudents.length} karyawan`;
+            
+            filteredStudents.forEach((student, index) => {
+              const row = document.createElement('tr');
+              row.style.borderBottom = '1px solid #e5e7eb';
+              
+              row.innerHTML = `
+                <td class="px-4 py-3">${index + 1}</td>
+                <td class="px-4 py-3">${student.nis}</td>
+                <td class="px-4 py-3">${student.nama}</td>
+                <td class="px-4 py-3">${student.jenisKelamin}</td>
+                <td class="px-4 py-3">${student.kelas}</td>
+                <td class="px-4 py-3">
+                  <div class="flex gap-2 flex-wrap" id="attendance-buttons-${student.nis}">
+                    <button onclick="selectAttendance('${student.nis}', 'Hadir')" 
+                      class="attendance-btn px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all"
+                      data-status="Hadir">
+                      ✅ Hadir
+                    </button>
+                    <button onclick="selectAttendance('${student.nis}', 'Izin')" 
+                      class="attendance-btn px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all"
+                      data-status="Izin">
+                      📋 Izin
+                    </button>
+                    <button onclick="selectAttendance('${student.nis}', 'Sakit')" 
+                      class="attendance-btn px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all"
+                      data-status="Sakit">
+                      🤒 Sakit
+                    </button>
+                    <button onclick="selectAttendance('${student.nis}', 'Alpha')" 
+                      class="attendance-btn px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all"
+                      data-status="Alpha">
+                      ❌ Alpha
+                    </button>
+                  </div>
+                </td>
+              `;
+              
+              tbody.appendChild(row);
+            });
+          }
+        }
+        
+        if (showIndicator) {
+          setTimeout(() => {
+            const siswaIndicator = document.getElementById('siswa-loading-indicator');
+            const absensiIndicator = document.getElementById('absensi-loading-indicator');
+            if (siswaIndicator) siswaIndicator.classList.add('hidden');
+            if (absensiIndicator) absensiIndicator.classList.add('hidden');
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error loading student data:', error);
+        if (!showIndicator) {
+          showError('Gagal memuat data karyawan dari Google Sheet');
+        }
+        const siswaIndicator = document.getElementById('siswa-loading-indicator');
+        const absensiIndicator = document.getElementById('absensi-loading-indicator');
+        if (siswaIndicator) siswaIndicator.classList.add('hidden');
+        if (absensiIndicator) absensiIndicator.classList.add('hidden');
+      }
+    }
+
+    async function loadRekapData() {
+      try {
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+          loadingIndicator.classList.remove('hidden');
+        }
+        
+        const response = await fetch(REKAP_SHEET_URL + '&cachebust=' + new Date().getTime());
+        const csvText = await response.text();
+        
+        const lines = csvText.split('\n').filter(line => line.trim());
+        
+        rekapData = [];
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          const values = parseCSVLine(line);
+          
+          if (values.length >= 5 && values[0]) {
+            rekapData.push({
+              nis: values[0].trim(),
+              nama: values[1].trim(),
+              kelas: values[2].trim(),
+              tanggal: values[3].trim(),
+              keterangan: values[4].trim()
+            });
+          }
+        }
+        
+        updateRekapTable();
+        
+        if (loadingIndicator) {
+          setTimeout(() => {
+            loadingIndicator.classList.add('hidden');
+          }, 500);
+        }
+      } catch (error) {
+        console.error('Error loading rekap data:', error);
+        const loadingIndicator = document.getElementById('loading-indicator');
+        if (loadingIndicator) {
+          loadingIndicator.classList.add('hidden');
+        }
+      }
+    }
+
+    function parseCSVLine(line) {
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current);
+      
+      return values;
+    }
+
+    function showPage(pageName) {
+      currentPage = pageName;
+      
+      document.querySelectorAll('.page-content').forEach(page => {
+        page.classList.add('hidden');
+      });
+      
+      document.getElementById(`page-${pageName}`).classList.remove('hidden');
+      
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active-nav');
+        btn.style.fontWeight = 'normal';
+      });
+      
+      event.target.style.fontWeight = 'bold';
+
+      stopAutoRefresh();
+      stopSiswaAutoRefresh();
+      stopAbsensiAutoRefresh();
+
+      if (pageName === 'rekap') {
+        loadRekapData();
+        loadRekapClassStudents();
+        startAutoRefresh();
+      } else if (pageName === 'siswa') {
+        loadStudentData(true);
+        startSiswaAutoRefresh();
+      } else if (pageName === 'absensi') {
+        loadStudentData(true);
+        startAbsensiAutoRefresh();
+      }
+    }
+
+    let autoRefreshInterval = null;
+
+    function startAutoRefresh() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+      }
+      autoRefreshInterval = setInterval(() => {
+        if (currentPage === 'rekap') {
+          loadRekapData();
+        }
+      }, 5000);
+    }
+
+    function stopAutoRefresh() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+    }
+
+    function startSiswaAutoRefresh() {
+      if (siswaAutoRefreshInterval) {
+        clearInterval(siswaAutoRefreshInterval);
+      }
+      siswaAutoRefreshInterval = setInterval(() => {
+        if (currentPage === 'siswa') {
+          loadStudentData(true);
+        }
+      }, 5000);
+    }
+
+    function stopSiswaAutoRefresh() {
+      if (siswaAutoRefreshInterval) {
+        clearInterval(siswaAutoRefreshInterval);
+        siswaAutoRefreshInterval = null;
+      }
+    }
+
+    function startAbsensiAutoRefresh() {
+      if (absensiAutoRefreshInterval) {
+        clearInterval(absensiAutoRefreshInterval);
+      }
+      absensiAutoRefreshInterval = setInterval(() => {
+        if (currentPage === 'absensi') {
+          loadStudentData(true);
+        }
+      }, 5000);
+    }
+
+    function stopAbsensiAutoRefresh() {
+      if (absensiAutoRefreshInterval) {
+        clearInterval(absensiAutoRefreshInterval);
+        absensiAutoRefreshInterval = null;
+      }
+    }
+
+    function loadRekapClassStudents() {
+      const selectedClass = document.getElementById('rekap-class-filter').value;
+      const studentFilter = document.getElementById('rekap-student-filter');
+      
+      studentFilter.innerHTML = '<option value="">Semua Siswa</option>';
+      
+      if (selectedClass) {
+        const classStudents = allStudentsForFilter.filter(s => s.kelas === selectedClass);
+        classStudents.forEach(student => {
+          const option = document.createElement('option');
+          option.value = student.nis;
+          option.textContent = `${student.nis} - ${student.nama}`;
+          studentFilter.appendChild(option);
+        });
+      } else {
+        allStudentsForFilter.forEach(student => {
+          const option = document.createElement('option');
+          option.value = student.nis;
+          option.textContent = `${student.nis} - ${student.nama}`;
+          studentFilter.appendChild(option);
+        });
+      }
+      
+      filterRekap();
+    }
+
+    document.getElementById('class-select').addEventListener('change', function() {
+      const selectedClass = this.value;
+      
+      if (!selectedClass) {
+        document.getElementById('student-list').classList.add('hidden');
+        return;
+      }
+      
+      document.getElementById('student-list').classList.remove('hidden');
+      document.getElementById('selected-class-title').textContent = `Kelas ${selectedClass}`;
+      
+      const filteredStudents = studentsData.filter(s => s.kelas === selectedClass);
+      document.getElementById('student-count').textContent = `Total: ${filteredStudents.length} siswa`;
+      
+      const tbody = document.getElementById('student-table-body');
+      tbody.innerHTML = '';
+      
+      if (filteredStudents.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td colspan="9" class="px-4 py-8 text-center text-gray-500">
+            Tidak ada data siswa untuk kelas ${selectedClass}
+          </td>
+        `;
+        tbody.appendChild(row);
+        return;
+      }
+      
+      filteredStudents.forEach((student, index) => {
+        student.attendance = null;
+        
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #e5e7eb';
+        
+        row.innerHTML = `
+          <td class="px-4 py-3">${index + 1}</td>
+          <td class="px-4 py-3">${student.nis}</td>
+          <td class="px-4 py-3">${student.nama}</td>
+          <td class="px-4 py-3">${student.jenisKelamin}</td>
+          <td class="px-4 py-3">${student.kelas}</td>
+          <td class="px-4 py-3">
+            <div class="flex gap-2 flex-wrap" id="attendance-buttons-${student.nis}">
+              <button onclick="selectAttendance('${student.nis}', 'Hadir')" 
+                class="attendance-btn px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all"
+                data-status="Hadir">
+                ✅ Hadir
+              </button>
+              <button onclick="selectAttendance('${student.nis}', 'Izin')" 
+                class="attendance-btn px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all"
+                data-status="Izin">
+                📋 Izin
+              </button>
+              <button onclick="selectAttendance('${student.nis}', 'Sakit')" 
+                class="attendance-btn px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all"
+                data-status="Sakit">
+                🤒 Sakit
+              </button>
+              <button onclick="selectAttendance('${student.nis}', 'Alpha')" 
+                class="attendance-btn px-4 py-2 rounded-lg text-sm font-medium border-2 transition-all"
+                data-status="Alpha">
+                ❌ Alpha
+              </button>
+            </div>
+          </td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+    });
+
+    function updateAttendance(nis, status) {
+      const student = studentsData.find(s => s.nis === nis);
+      if (student) {
+        student.attendance = status;
+      }
+    }
+
+    function selectAttendance(nis, status) {
+      const student = studentsData.find(s => s.nis === nis);
+      if (student) {
+        student.attendance = status;
+      }
+
+      const buttonContainer = document.getElementById(`attendance-buttons-${nis}`);
+      const buttons = buttonContainer.querySelectorAll('.attendance-btn');
+      
+      buttons.forEach(btn => {
+        btn.style.backgroundColor = '#ffffff';
+        btn.style.borderColor = '#d1d5db';
+        btn.style.color = '#6b7280';
+        btn.style.fontWeight = 'normal';
+      });
+
+      const selectedButton = Array.from(buttons).find(btn => btn.dataset.status === status);
+      if (selectedButton) {
+        if (status === 'Hadir') {
+          selectedButton.style.backgroundColor = '#dcfce7';
+          selectedButton.style.borderColor = '#22c55e';
+          selectedButton.style.color = '#15803d';
+        } else if (status === 'Izin') {
+          selectedButton.style.backgroundColor = '#dbeafe';
+          selectedButton.style.borderColor = '#3b82f6';
+          selectedButton.style.color = '#1e40af';
+        } else if (status === 'Sakit') {
+          selectedButton.style.backgroundColor = '#fef3c7';
+          selectedButton.style.borderColor = '#f59e0b';
+          selectedButton.style.color = '#b45309';
+        } else if (status === 'Alpha') {
+          selectedButton.style.backgroundColor = '#fee2e2';
+          selectedButton.style.borderColor = '#ef4444';
+          selectedButton.style.color = '#b91c1c';
+        }
+        selectedButton.style.fontWeight = 'bold';
+      }
+    }
+
+    async function submitAttendance() {
+      const selectedClass = document.getElementById('class-select').value;
+      const attendanceDate = document.getElementById('attendance-date').value;
+      
+      if (!selectedClass) {
+        showError('Silakan pilih project terlebih dahulu');
+        return;
+      }
+
+      if (!attendanceDate) {
+        showError('Silakan pilih tanggal absensi terlebih dahulu');
+        return;
+      }
+      
+      const filteredStudents = studentsData.filter(s => s.kelas === selectedClass);
+      
+      if (filteredStudents.length === 0) {
+        showError('Tidak ada karyawan untuk diabsen');
+        return;
+      }
+      
+      const unfilledStudents = filteredStudents.filter(s => !s.attendance);
+      if (unfilledStudents.length > 0) {
+        showError(`Masih ada ${unfilledStudents.length} karyawan yang belum dipilih keterangannya.\n\nSilakan pilih keterangan (Hadir/Izin/Sakit/Alpha) untuk semua karyawan.`);
+        return;
+      }
+      
+      showLoadingModal();
+      
+      const tanggalAbsen = attendanceDate;
+      
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (let i = 0; i < filteredStudents.length; i++) {
+        const student = filteredStudents[i];
+        
+        document.getElementById('progress-info').textContent = 
+          `Mengirim data ${i + 1} dari ${filteredStudents.length}...`;
+        
+        try {
+          const formData = new FormData();
+          formData.append('NIS', student.nis);
+          formData.append('Nama Lengkap', student.nama);
+          formData.append('Kelas', student.kelas);
+          formData.append('Tanggal Absen', tanggalAbsen);
+          formData.append('Keterangan', student.attendance);
+          
+          const response = await fetch(SUBMIT_URL, {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            successCount++;
+            
+            rekapData.push({
+              tanggal: tanggalAbsen,
+              nis: student.nis,
+              nama: student.nama,
+              kelas: student.kelas,
+              keterangan: student.attendance
+            });
+          } else {
+            failCount++;
+          }
+        } catch (error) {
+          failCount++;
+        }
+      }
+      
+      closeLoadingModal();
+      
+      if (failCount === 0) {
+        showSuccess(`Semua data absensi berhasil dikirim!\n\nTotal siswa: ${successCount}\nKelas: ${selectedClass}\nTanggal: ${tanggalAbsen}`);
+        
+        document.getElementById('class-select').value = '';
+        document.getElementById('attendance-date').value = '';
+        document.getElementById('student-list').classList.add('hidden');
+        
+        studentsData.forEach(s => {
+          if (s.kelas === selectedClass) {
+            s.attendance = null;
+          }
+        });
+      } else {
+        showError(`Pengiriman selesai dengan ${failCount} data gagal.\n\nBerhasil: ${successCount}\nGagal: ${failCount}`);
+      }
+    }
+
+    function calculateStatistics(data) {
+      const stats = {
+        hadir: 0,
+        izin: 0,
+        sakit: 0,
+        alpha: 0,
+        total: data.length
+      };
+
+      data.forEach(record => {
+        if (record.keterangan === 'Hadir') {
+          stats.hadir++;
+        } else if (record.keterangan === 'Izin') {
+          stats.izin++;
+        } else if (record.keterangan === 'Sakit') {
+          stats.sakit++;
+        } else if (record.keterangan === 'Alpha') {
+          stats.alpha++;
+        }
+      });
+
+      return stats;
+    }
+
+    function updateStatistics(data) {
+      const stats = calculateStatistics(data);
+
+      document.getElementById('stat-hadir').textContent = stats.hadir;
+      document.getElementById('stat-izin').textContent = stats.izin;
+      document.getElementById('stat-sakit').textContent = stats.sakit;
+      document.getElementById('stat-alpha').textContent = stats.alpha;
+
+      document.getElementById('total-records').textContent = `${stats.total} Records`;
+
+      const hadirPercent = stats.total > 0 ? ((stats.hadir / stats.total) * 100).toFixed(1) : 0;
+      const izinPercent = stats.total > 0 ? ((stats.izin / stats.total) * 100).toFixed(1) : 0;
+      const sakitPercent = stats.total > 0 ? ((stats.sakit / stats.total) * 100).toFixed(1) : 0;
+      const alphaPercent = stats.total > 0 ? ((stats.alpha / stats.total) * 100).toFixed(1) : 0;
+      const tidakHadirPercent = stats.total > 0 ? (((stats.izin + stats.sakit + stats.alpha) / stats.total) * 100).toFixed(1) : 0;
+
+      document.getElementById('percentage-hadir').textContent = `${hadirPercent}%`;
+      document.getElementById('percentage-tidak-hadir').textContent = `${tidakHadirPercent}%`;
+
+      document.getElementById('bar-hadir').style.width = `${hadirPercent}%`;
+      document.getElementById('bar-izin').style.width = `${izinPercent}%`;
+      document.getElementById('bar-sakit').style.width = `${sakitPercent}%`;
+      document.getElementById('bar-alpha').style.width = `${alphaPercent}%`;
+
+      document.getElementById('bar-hadir-text').textContent = `${stats.hadir} (${hadirPercent}%)`;
+      document.getElementById('bar-izin-text').textContent = `${stats.izin} (${izinPercent}%)`;
+      document.getElementById('bar-sakit-text').textContent = `${stats.sakit} (${sakitPercent}%)`;
+      document.getElementById('bar-alpha-text').textContent = `${stats.alpha} (${alphaPercent}%)`;
+    }
+
+    function updateRekapTable() {
+      filterRekap();
+    }
+
+    function filterRekap() {
+      const classFilter = document.getElementById('rekap-class-filter').value;
+      const studentFilter = document.getElementById('rekap-student-filter').value;
+      const dateFrom = document.getElementById('rekap-date-from').value;
+      const dateTo = document.getElementById('rekap-date-to').value;
+      const statusFilter = document.getElementById('rekap-status-filter').value;
+      
+      const tbody = document.getElementById('rekap-table-body');
+      tbody.innerHTML = '';
+      
+      let filteredData = rekapData;
+      
+      if (classFilter) {
+        filteredData = filteredData.filter(r => r.kelas === classFilter);
+      }
+
+      if (studentFilter) {
+        filteredData = filteredData.filter(r => r.nis === studentFilter);
+      }
+      
+      if (dateFrom) {
+        filteredData = filteredData.filter(r => r.tanggal >= dateFrom);
+      }
+
+      if (dateTo) {
+        filteredData = filteredData.filter(r => r.tanggal <= dateTo);
+      }
+
+      if (statusFilter) {
+        filteredData = filteredData.filter(r => r.keterangan === statusFilter);
+      }
+
+      updateStatistics(filteredData);
+      
+      if (filteredData.length === 0) {
+        document.getElementById('rekap-empty').classList.remove('hidden');
+        return;
+      }
+      
+      document.getElementById('rekap-empty').classList.add('hidden');
+      
+      filteredData.forEach((rekap, index) => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #e5e7eb';
+        
+        let keteranganBadge = '';
+        if (rekap.keterangan === 'Hadir') {
+          keteranganBadge = '<span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-semibold">✅ Hadir</span>';
+        } else if (rekap.keterangan === 'Izin') {
+          keteranganBadge = '<span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-semibold">📋 Izin</span>';
+        } else if (rekap.keterangan === 'Sakit') {
+          keteranganBadge = '<span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-semibold">🤒 Sakit</span>';
+        } else {
+          keteranganBadge = '<span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">����� Alpha</span>';
+        }
+        
+        row.innerHTML = `
+          <td class="px-4 py-3">${index + 1}</td>
+          <td class="px-4 py-3">${rekap.tanggal}</td>
+          <td class="px-4 py-3">${rekap.nis}</td>
+          <td class="px-4 py-3">${rekap.nama}</td>
+          <td class="px-4 py-3">${rekap.kelas}</td>
+          <td class="px-4 py-3 text-center">${keteranganBadge}</td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+    }
+
+    function updateSiswaTable() {
+      filterSiswa();
+    }
+
+    function filterSiswa() {
+      const classFilter = document.getElementById('siswa-class-filter').value;
+      
+      const tbody = document.getElementById('siswa-table-body');
+      tbody.innerHTML = '';
+      
+      let filteredData = studentsData;
+      
+      if (classFilter) {
+        filteredData = filteredData.filter(s => s.kelas === classFilter);
+      }
+      
+      filteredData.forEach((student, index) => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #e5e7eb';
+        
+        row.innerHTML = `
+          <td class="px-4 py-3">${index + 1}</td>
+          <td class="px-4 py-3">${student.nis}</td>
+          <td class="px-4 py-3">${student.nama}</td>
+          <td class="px-4 py-3">${student.jenisKelamin}</td>
+          <td class="px-4 py-3">${student.kelas}</td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+    }
+
+    function showLoadingModal() {
+      document.getElementById('loading-modal').style.display = 'flex';
+    }
+
+    function closeLoadingModal() {
+      document.getElementById('loading-modal').style.display = 'none';
+    }
+
+    function showSuccess(message) {
+      document.getElementById('success-message').textContent = message;
+      document.getElementById('success-modal').style.display = 'flex';
+    }
+
+    function closeSuccessModal() {
+      document.getElementById('success-modal').style.display = 'none';
+    }
+
+    function showError(message) {
+      document.getElementById('error-message').textContent = message;
+      document.getElementById('error-modal').style.display = 'flex';
+    }
+
+    function closeErrorModal() {
+      document.getElementById('error-modal').style.display = 'none';
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.background_color || defaultConfig.background_color,
+              set: (value) => {
+                config.background_color = value;
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            },
+            {
+              get: () => config.header_color || defaultConfig.header_color,
+              set: (value) => {
+                config.header_color = value;
+                window.elementSdk.setConfig({ header_color: value });
+              }
+            },
+            {
+              get: () => config.nav_color || defaultConfig.nav_color,
+              set: (value) => {
+                config.nav_color = value;
+                window.elementSdk.setConfig({ nav_color: value });
+              }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (value) => {
+                config.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            },
+            {
+              get: () => config.button_color || defaultConfig.button_color,
+              set: (value) => {
+                config.button_color = value;
+                window.elementSdk.setConfig({ button_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: {
+            get: () => config.font_family || defaultConfig.font_family,
+            set: (value) => {
+              config.font_family = value;
+              window.elementSdk.setConfig({ font_family: value });
+            }
+          },
+          fontSizeable: {
+            get: () => config.font_size || defaultConfig.font_size,
+            set: (value) => {
+              config.font_size = value;
+              window.elementSdk.setConfig({ font_size: value });
+            }
+          }
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ["school_name", config.school_name || defaultConfig.school_name]
+        ])
+      });
+    }
+
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    document.getElementById('attendance-date').value = todayStr;
+
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+    
+    loadStudentData();
+    
+    onConfigChange(defaultConfig);
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9a1a5d28c3d9a5e3',t:'MTc2MzY2NzA0OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
